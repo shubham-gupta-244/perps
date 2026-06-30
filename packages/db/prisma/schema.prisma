@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  wallet    Wallet?
+  createdAt DateTime @default(now())
+
+  @@map("users")
+}
+
+model Position {
+  id               String    @id @default(uuid())
+  userId           String
+  marketId         String
+  quantity         Int
+  price            Int
+  type             orderType
+  margin           Int
+  liquidationPrice Int
+  avaragePrice     Int
+  wallet           Wallet    @relation(fields: [userId], references: [id])
+
+  @@map("positions")
+}
+
+model Wallet {
+  id            String     @id @default(uuid())
+  userId        String     @unique
+  balance       Int
+  freeBalance   Int
+  lockedBalance Int
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @default(now())
+  orders        Order[]
+  positions     Position[]
+  Makerfills    Fills[]    @relation("makerUser")
+  Takerfills    Fills[]    @relation("takerUser")
+  user          User       @relation(fields: [userId], references: [id])
+
+  @@map("wallet")
+}
+
+model Market {
+  id     String @id @default(uuid())
+  url    String
+  name   String
+  symbol String
+
+  // lockedBalance  lockStockBalance[]
+  @@map("market")
+}
+
+model Order {
+  id               String    @id @default(uuid())
+  walletId         String
+  marketId         String
+  orderType        orderType
+  side             side
+  quantity         Int
+  price            Int
+  lavreage         Int
+  liquidationPrice Int
+  lockedBalance    Int
+  status           status
+  makerFills       Fills[]   @relation("makerFills")
+  takerFills       Fills[]   @relation("takerFills")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  wallet           Wallet    @relation(fields: [walletId], references: [id])
+
+  @@index([walletId, status])
+  @@map("orders")
+}
+
+model Fills {
+  id           String @id @default(uuid())
+  makerId      String
+  takerId      String
+  makerOrderId String
+  takerOrderId String
+
+  makerUser  Wallet @relation("makerUser", fields: [makerId], references: [id])
+  takerUser  Wallet @relation("takerUser", fields: [takerId], references: [id])
+  makerOrder Order  @relation("makerFills", fields: [makerOrderId], references: [id])
+  takerOrder Order  @relation("takerFills", fields: [takerOrderId], references: [id])
+
+  @@map("fills")
+}
+
+enum status {
+  CLOSE
+  PARTIALLYFILLED
+  OPEN
+}
+
+enum side {
+  LONG
+  SHORT
+}
+
+enum orderType {
+  LIMIT
+  MARKET
+}
