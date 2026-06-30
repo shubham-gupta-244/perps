@@ -11,7 +11,7 @@ export type create_market = {
   imageUrl: string;
 };
 
-export type delete_order = {
+export type cancel_order = {
   userId: string;
   orderId: string;
   price:number
@@ -40,7 +40,7 @@ export type create_user = {
   userid:string
 }
 
-export type eventData = create_market | create_order | create_user | add_balance | user_balance | delete_order
+export type eventData = create_market | create_order | create_user | add_balance | user_balance | cancel_order
 
 type payload = {
 type:eventType

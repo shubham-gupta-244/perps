@@ -14,7 +14,7 @@ export const onrampController = async (
   const userId = req.user?.userId;
   const requirebody = onrampSchema.safeParse(req.body);
   if (!requirebody.success) {
-    throw new ValidationError(requirebody.error);
+    throw new ValidationError([{path:"amount",message:""}]);
   }
   const amount = req.body.amount;
   const updateBalance = await prisma.user.update({

@@ -60,6 +60,7 @@ model Market {
   @@map("market")
 }
 
+
 model Order {
   id               String    @id @default(uuid())
   walletId         String
@@ -88,6 +89,9 @@ model Fills {
   takerId      String
   makerOrderId String
   takerOrderId String
+  quantity     Int
+  price        Int
+  createdAt    DateTime @default(now())
 
   makerUser  Wallet @relation("makerUser", fields: [makerId], references: [id])
   takerUser  Wallet @relation("takerUser", fields: [takerId], references: [id])

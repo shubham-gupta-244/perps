@@ -50,8 +50,12 @@ export const orderHistory = async (
   res: Response,
 ): Promise<void> => {
   try {
+    const wallet = await prisma.wallet.findUnique({where:{userId:req.user?.userId}})
+    if(!wallet){
+      return
+    }
     const orderHistory = await prisma.order.findMany({
-      where: { userId: req.user?.userId },
+      where: { walletId:wallet.id },
       include: {
         makerFills: {
           select: { quantity: true, prize: true, createdAt: true },
@@ -79,12 +83,14 @@ export const deleteOrder = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const orderId = req.body.orderId as string;
+  const {orderId , price , side} = req.body
   const userId = req.user?.userId as string;
+  
+  
   const loopBackId = createLoopBackId(6) as string;
   const response = await sendToStream({
     type: "delete_order",
-    data: { userId, orderId },
+    data: { userId, orderId, price , side },
     loopBackId,
   });
   if (!response) {
