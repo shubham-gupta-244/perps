@@ -1,5 +1,10 @@
-
- type eventType = "add_balance" | "create_market" | "delete_order" | "user_balance" | "create_order" | "create_user"
+type eventType =
+  | "add_balance"
+  | "create_market"
+  | "delete_order"
+  | "user_balance"
+  | "create_order"
+  | "create_user";
 
 export type add_balance = {
   userId: string;
@@ -14,8 +19,8 @@ export type create_market = {
 export type cancel_order = {
   userId: string;
   orderId: string;
-  price:number
-  side : "BUY" | "SELL"
+  price: number;
+  side: "BUY" | "SELL";
 };
 
 export type user_balance = {
@@ -24,34 +29,40 @@ export type user_balance = {
 };
 
 export type create_order = {
-  orderId:string
+  orderId: string;
   userId: string;
   marketId: string;
   quantity: number;
-  price: number;
-  side:  "BUY" | "SELL";
+  limitPrice: number;
+  side: "BUY" | "SELL";
   ordertype: "Market" | "LIMIT";
+  margin: number;
+  lavarage: number;
+  liquidationPrice: number;
 };
 
 export type create_user = {
-  username: string,
-  usd_Balance: number,
-  lockedBalance: number ,
-  userid:string
-}
+  username: string;
+  usd_Balance: number;
+  lockedBalance: number;
+  userid: string;
+};
 
-export type eventData = create_market | create_order | create_user | add_balance | user_balance | cancel_order
+export type eventData =
+  | create_market
+  | create_order
+  | create_user
+  | add_balance
+  | user_balance
+  | cancel_order;
 
 type payload = {
-type:eventType
-data:eventData
-loopBackId:string
-}
+  type: eventType;
+  data: eventData;
+  loopBackId: string;
+};
 
-
-export type {payload}
-
-
+export type { payload };
 
 // 1. Define your core data payloads as a single lookup map
 // interface PayloadMap {
@@ -61,7 +72,6 @@ export type {payload}
 //   user_balance: { userId: string; balance: string };
 //   create_order: {userId: string; marketId: string; quantity: string; price: string; side: string; ordertype: string; };
 //   create_user: {username: string; usd_Balance: number; lockedBalance: number; userid: string;};
-
 
 // 2. Use a generic mapped type to auto-generate the union
 // export type payload = {

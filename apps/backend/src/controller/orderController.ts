@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Request, Response } from "express";
-import  prisma  from "@repo/db";
+import prisma from "@repo/db";
 import { sendToStream } from "../utils/sendToEngine";
 import { TimeoutError } from "redis";
 import { createLoopBackId } from "../utils/loopback";
@@ -31,11 +31,9 @@ export const OrderController = async (req: Request, res: Response) => {
     loopBackId,
   });
   if (!response) {
-    res
-      .status(404)
-      .json({
-        message: "did not recieve the response after sending to engine",
-      });
+    res.status(404).json({
+      message: "did not recieve the response after sending to engine",
+    });
     throw new TimeoutError();
   }
   res.status(200).json({
@@ -50,18 +48,20 @@ export const orderHistory = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const wallet = await prisma.wallet.findUnique({where:{userId:req.user?.userId}})
-    if(!wallet){
-      return
+    const wallet = await prisma.wallet.findUnique({
+      where: { userId: req.user?.userId },
+    });
+    if (!wallet) {
+      return;
     }
     const orderHistory = await prisma.order.findMany({
-      where: { walletId:wallet.id },
+      where: { walletId: wallet.id },
       include: {
         makerFills: {
-          select: { quantity: true, prize: true, createdAt: true },
+          select: { quantity: true, price: true, createdAt: true },
         },
         takerFills: {
-          select: { prize: true, quantity: true, createdAt: true },
+          select: { price: true, quantity: true, createdAt: true },
         },
       },
     });
@@ -83,14 +83,13 @@ export const deleteOrder = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const {orderId , price , side} = req.body
+  const { orderId, price, side } = req.body;
   const userId = req.user?.userId as string;
-  
-  
+
   const loopBackId = createLoopBackId(6) as string;
   const response = await sendToStream({
     type: "delete_order",
-    data: { userId, orderId, price , side },
+    data: { userId, orderId, price, side },
     loopBackId,
   });
   if (!response) {
