@@ -1,9 +1,16 @@
 import { Position } from "./postitons";
-import { RiskEngine } from "../risk/riskEngine";
-export class PositionManager {
-  private positions: Map<string, Position> = new Map();
+import riskEngine, { type RiskEngine } from "../risk/riskEngine";
 
-  constructor(riskEngine: RiskEngine) {}
+class PositionManager {
+  private positions: Map<string, Position> = new Map();
+  private riskEngine: RiskEngine;
+
+  constructor(riskEngine: RiskEngine) {
+    this.riskEngine = riskEngine;
+  }
 
   private key(userId: string, marketId: string) {}
 }
+
+const positionManager = new PositionManager(riskEngine);
+export default positionManager;

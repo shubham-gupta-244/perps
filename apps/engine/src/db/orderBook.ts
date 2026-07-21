@@ -15,21 +15,22 @@ class OrderBook {
 }
 
 class Shorts {
-  public Shorts: Map<number, LongShort[]> = new Map();
-
-  constructor() {}
-
-  getBest() {}
-
-  delete() {}
-
-  addSide() {}
+  public maps: Map<number, LongShort[]> = new Map();
+  public ShortFunction = new LongShortFunction(this.maps);
 }
 
 class Longs {
-  public Longs: Map<number, LongShort[]> = new Map();
+  public maps: Map<number, LongShort[]> = new Map();
+  public LongFunction = new LongShortFunction(this.maps);
+}
 
-  constructor() {}
+// pass the map to this class and wirte the functional logic
+
+class LongShortFunction {
+  public mapLongShort: Map<number, LongShort[]>;
+  constructor(mapLongShort: Map<number, LongShort[]>) {
+    this.mapLongShort = mapLongShort;
+  }
 
   getBest() {}
 

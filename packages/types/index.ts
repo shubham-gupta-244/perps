@@ -38,6 +38,7 @@ export type create_order = {
   ordertype: "Market" | "LIMIT";
   margin: number;
   lavarage: number;
+  // either take liquidation or margin as input
   liquidationPrice: number;
 };
 

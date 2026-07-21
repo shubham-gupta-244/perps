@@ -1,6 +1,6 @@
 import type { User } from "../utils/types";
 // import tha postion object to verify the user has valid position or not
-export class Users {
+class Users {
   public users: User[] = [];
 
   constructor() {}
@@ -23,3 +23,6 @@ export class Users {
     return true;
   }
 }
+
+const users = new Users();
+export default users;

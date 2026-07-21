@@ -1,16 +1,18 @@
-import redis, { RedisClient, type RedisClientType } from "redis"
-import { createClient } from "redis"
+import { RedisClient, type RedisClientType } from "redis";
+import { createClient } from "redis";
 
-export async function connectClients (): Promise <{readerClient : RedisClientType , writerClient:RedisClientType}>{
+export async function connectClients(): Promise<{
+  readerClient: RedisClientType;
+  writerClient: RedisClientType;
+}> {
+  const readerClient = createClient();
+  const writerClient = createClient();
 
-const readerClient =  createClient()
-const writerClient =  createClient()
+  readerClient.on("error", (err) => console.log(err));
+  writerClient.on("error", (err) => console.log(err));
 
-readerClient.on("error",(err)=> console.log(err))
-writerClient.on("error",(err)=> console.log(err))
+  await Promise.all([readerClient.connect(), writerClient.connect()]);
+  console.log("both client has been connected");
 
-await Promise.all([readerClient.connect(),writerClient.connect()])
-console.log("both client has been connected")
-
-return {readerClient , writerClient}
+  return { readerClient, writerClient };
 }
