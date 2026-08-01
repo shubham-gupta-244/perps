@@ -1,4 +1,4 @@
-import { RedisClient, type RedisClientType } from "redis";
+import { type RedisClientType } from "redis";
 import { createClient } from "redis";
 
 export async function connectClients(): Promise<{

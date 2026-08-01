@@ -1,8 +1,20 @@
-import { createClient } from "redis";
-export const writerClinet = createClient();
-export const readerClient = createClient();
+import { createClient, type RedisClientType } from "redis";
 
-await writerClinet.connect();
-console.log("writerClient has been connected");
-await readerClient.connect();
-console.log("readerClient has been connected");
+export async function connectClient(): Promise<{
+  readerClient: RedisClientType;
+  writerClient: RedisClientType;
+}> {
+  const readerClient = createClient();
+  const writerClient = createClient();
+
+  readerClient.on("error", (err) => {
+    console.log(err);
+  });
+  writerClient.on("error", (err) => {
+    console.log(err);
+  });
+
+  await Promise.all([readerClient.connect(), writerClient.connect()]);
+
+  return { readerClient, writerClient };
+}

@@ -1,20 +1,43 @@
 import type { create_order } from "@repo/types";
-import type { Fills, LongShort } from "../utils/types";
+import type { Fills, BidAsk } from "../utils/types";
 
 class Fill {
   public fills: Fills[] = [];
 
-  generateFills(order: create_order, availableMatch: LongShort[]) {
-    const fillMap: Map<string, { longshort: LongShort; fillData: Fills }> =
+  generateFills(order: create_order, availableMatch: BidAsk[]) {
+    const fillMap: Map<string, { match: BidAsk; fillData: Fills }> =
       new Map();
     let remainingQuantity = order.quantity;
-    let updatedMatches: LongShort[] = [];
-    for (let match of availableMatch) {
-      if (remainingQuantity <= 0) {
-        updatedMatches.push(match);
-        continue;
-      }
+
+    for (const match of availableMatch) {
+      if (remainingQuantity <= 0) break;
+
+      const filledQuantity =
+        remainingQuantity >= match.remainingQuantity
+          ? match.remainingQuantity
+          : remainingQuantity;
+
+      if (filledQuantity <= 0) continue;
+
+      match.remainingQuantity -= filledQuantity;
+      remainingQuantity -= filledQuantity;
+
+      const fillData: Fills = {
+        makerId: match.userId,
+        takerId: order.userId,
+        makerOrderId: match.orderId,
+        takerOrderId: order.orderId,
+        marketId: order.marketId,
+        price: match.price,
+        qunatity: filledQuantity,
+        createdAt: new Date(),
+      };
+
+      this.fills.push(fillData);
+      fillMap.set(match.id, { match, fillData });
     }
+
+    return { fillMap, remainingQuantity };
   }
 }
 

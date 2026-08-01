@@ -2,104 +2,159 @@ import { z } from "zod";
 import type { Request, Response } from "express";
 import prisma from "@repo/db";
 import { sendToStream } from "../utils/sendToEngine";
-import { TimeoutError } from "redis";
-import { createLoopBackId } from "../utils/loopback";
+import { createLoopBackId } from "../utils/loopbackId";
+
 const orderparser = z.object({
-  qunatity: z.number(),
+  quantity: z.number().positive(),
   marketId: z.string(),
-  prize: z.string(),
-  ordertype: z.string(),
-  side: z.string(),
+  price: z.number().positive(),
+  ordertype: z.enum(["LIMIT", "Market"]),
+  side: z.enum(["Bid", "Ask"]),
+  leverage: z.number().positive(),
+  margin: z.number().positive(),
+  liquidationPrice: z.number(),
 });
-export const OrderController = async (req: Request, res: Response) => {
-  const userId = req.user?.userId;
+
+export const OrderController = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.userId as string;
   const validbody = orderparser.safeParse(req.body);
-  if (!validbody) {
-    res.status(404).json({ message: "invalid form of body" });
+  if (!validbody.success) {
+    res.status(400).json({ message: "invalid form of body", issues: validbody.error.issues });
     return;
   }
-  const { quantity, marketId, price, ordertype, side } = req.body;
-  const orderId = crypto.randomUUID();
+  const { quantity, marketId, price, ordertype, side, leverage, margin, liquidationPrice } =
+    validbody.data;
 
-  // const createOrder = await prisma.order.create({
-  //   data:{quantity,marketId,price,orderType:ordertype,side,userId}
-  //  })
-  const loopBackId = createLoopBackId(6) as string;
+  const wallet = await prisma.wallet.findUnique({ where: { userId } });
+  if (!wallet) {
+    res.status(404).json({ message: "wallet not found for this user" });
+    return;
+  }
+
+  const order = await prisma.order.create({
+    data: {
+      walletId: wallet.id,
+      marketId,
+      orderType: ordertype === "LIMIT" ? "LIMIT" : "MARKET",
+      side: side === "Bid" ? "BID" : "ASK",
+      quantity,
+      price,
+      lavreage: leverage,
+      liquidationPrice,
+      lockedBalance: margin,
+      status: "OPEN",
+    },
+  });
+
+  const loopBackId = createLoopBackId(6);
   const response = await sendToStream({
     type: "create_order",
-    data: { marketId, userId, orderId, price, ordertype, quantity, side },
+    data: {
+      marketId,
+      userId,
+      orderId: order.id,
+      limitPrice: price,
+      ordertype,
+      quantity,
+      side,
+      margin,
+      lavarage: leverage,
+      liquidationPrice,
+    },
     loopBackId,
   });
   if (!response) {
-    res.status(404).json({
-      message: "did not recieve the response after sending to engine",
+    res.status(504).json({
+      message: "did not receive a response from the matching engine in time",
+      orderId: order.id,
     });
-    throw new TimeoutError();
+    return;
   }
   res.status(200).json({
-    messgae: "order has been placed",
+    message: "order has been placed",
+    orderId: order.id,
     response,
   });
-  return;
 };
 
 export const orderHistory = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  try {
-    const wallet = await prisma.wallet.findUnique({
-      where: { userId: req.user?.userId },
-    });
-    if (!wallet) {
-      return;
-    }
-    const orderHistory = await prisma.order.findMany({
-      where: { walletId: wallet.id },
-      include: {
-        makerFills: {
-          select: { quantity: true, price: true, createdAt: true },
-        },
-        takerFills: {
-          select: { price: true, quantity: true, createdAt: true },
-        },
-      },
-    });
-    if (!orderHistory) {
-      res.status(404).json({
-        message: "Invalid orderId",
-      });
-      throw new Error("invalid orderId");
-    }
-    res.status(200).json({
-      orderHistory,
-    });
-  } catch (e) {
-    console.log("error while fetching orderHistory from db", e);
+  const wallet = await prisma.wallet.findUnique({
+    where: { userId: req.user?.userId },
+  });
+  if (!wallet) {
+    res.status(404).json({ message: "wallet not found for this user" });
+    return;
   }
+  const orderHistory = await prisma.order.findMany({
+    where: { walletId: wallet.id },
+    include: {
+      makerFills: {
+        select: { quantity: true, price: true, createdAt: true },
+      },
+      takerFills: {
+        select: { price: true, quantity: true, createdAt: true },
+      },
+    },
+  });
+  res.status(200).json({
+    orderHistory,
+  });
 };
+
+const cancelOrderParser = z.object({
+  orderId: z.string(),
+  price: z.number(),
+  side: z.enum(["Bid", "Ask"]),
+});
 
 export const deleteOrder = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const { orderId, price, side } = req.body;
   const userId = req.user?.userId as string;
+  const validbody = cancelOrderParser.safeParse(req.body);
+  if (!validbody.success) {
+    res.status(400).json({ message: "invalid form of body", issues: validbody.error.issues });
+    return;
+  }
+  const { orderId, price, side } = validbody.data;
 
-  const loopBackId = createLoopBackId(6) as string;
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { wallet: { select: { userId: true } } },
+  });
+  if (!order || order.wallet.userId !== userId) {
+    res.status(404).json({ message: "order not found" });
+    return;
+  }
+  if (order.status === "CLOSE") {
+    res.status(409).json({ message: "order is already closed" });
+    return;
+  }
+
+  const loopBackId = createLoopBackId(6);
   const response = await sendToStream({
     type: "delete_order",
     data: { userId, orderId, price, side },
     loopBackId,
   });
   if (!response) {
-    res.status(404).json({
-      message: "request time out",
+    res.status(504).json({
+      message: "did not receive a response from the matching engine in time",
     });
-    throw new TimeoutError();
+    return;
   }
+
+  await prisma.order.update({
+    where: { id: orderId },
+    data: { status: "CLOSE" },
+  });
+
   res.status(200).json({
-    message: `order has been deleted`,
+    message: "order has been deleted",
     response,
   });
 };

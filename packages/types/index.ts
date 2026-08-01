@@ -1,11 +1,3 @@
-type eventType =
-  | "add_balance"
-  | "create_market"
-  | "delete_order"
-  | "user_balance"
-  | "create_order"
-  | "create_user";
-
 export type add_balance = {
   userId: string;
   balance: number;
@@ -20,7 +12,7 @@ export type cancel_order = {
   userId: string;
   orderId: string;
   price: number;
-  side: "BUY" | "SELL";
+  side: "Bid" | "Ask";
 };
 
 export type user_balance = {
@@ -34,8 +26,8 @@ export type create_order = {
   marketId: string;
   quantity: number;
   limitPrice: number;
-  side: "BUY" | "SELL";
-  ordertype: "Market" | "LIMIT";
+  side: "Bid" | "Ask";
+  ordertype: "MARKET" | "LIMIT";
   margin: number;
   lavarage: number;
   // either take liquidation or margin as input
@@ -57,28 +49,19 @@ export type eventData =
   | user_balance
   | cancel_order;
 
-type payload = {
-  type: eventType;
-  data: eventData;
-  loopBackId: string;
-};
+interface PayloadMap {
+  add_balance: add_balance;
+  create_market: create_market;
+  delete_order: cancel_order;
+  user_balance: user_balance;
+  create_order: create_order;
+  create_user: create_user;
+}
 
-export type { payload };
-
-// 1. Define your core data payloads as a single lookup map
-// interface PayloadMap {
-//   add_balance: { userId: string; balance: string };
-//   create_market: { slug: string; imageUrl: string };
-//   delete_order: { userId: string; orderId: string };
-//   user_balance: { userId: string; balance: string };
-//   create_order: {userId: string; marketId: string; quantity: string; price: string; side: string; ordertype: string; };
-//   create_user: {username: string; usd_Balance: number; lockedBalance: number; userid: string;};
-
-// 2. Use a generic mapped type to auto-generate the union
-// export type payload = {
-//   [K in keyof PayloadMap]: {
-//     type: K;
-//     data: PayloadMap[K];
-//     loopbackid: string;
-//   };
-// }[keyof PayloadMap];
+export type payload = {
+  [K in keyof PayloadMap]: {
+    type: K;
+    data: PayloadMap[K];
+    loopBackId: string;
+  };
+}[keyof PayloadMap];

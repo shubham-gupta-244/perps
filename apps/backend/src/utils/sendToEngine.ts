@@ -1,40 +1,65 @@
-import { readerClient } from "./redis";
-import { writerClinet } from "./redis";
 import type { payload } from "@repo/types";
+import { readerClient, writerClient } from "..";
 
-const storeResolve = new Map<string, (value: unknown) => void>();
+type PendingRequest = {
+  resolve: (value: unknown) => void;
+  timer: ReturnType<typeof setTimeout>;
+};
 
-export async function sendToStream(event: payload) {
-  return new Promise(async (resolve, reject) => {
-    const eventToSend = JSON.stringify(event);
-    const response = await writerClinet.xAdd("to_engine", "*", { eventToSend });
-    storeResolve.set(event.loopBackId, resolve);
-    setTimeout(() => {
-      if (storeResolve.get(event.loopBackId)) {
-        reject();
+const pendingRequests = new Map<string, PendingRequest>();
+
+export async function sendToStream(event: payload): Promise<unknown> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      if (pendingRequests.delete(event.loopBackId)) {
+        resolve(null);
       }
     }, 10000);
+
+    pendingRequests.set(event.loopBackId, { resolve, timer });
+
+    writerClient
+      .xAdd("to_engine", "*", { message: JSON.stringify(event) })
+      // if it fails to write to stream the cleanup logic should run
+      .catch(() => {
+        clearTimeout(timer);
+        if (pendingRequests.delete(event.loopBackId)) {
+          resolve(null);
+        }
+      });
   });
 }
 
 async function main() {
+  let lastId = "$";
   while (true) {
     const response = await readerClient.xRead(
-      { key: "from_engine", id: "$" },
-      {
-        COUNT: 1,
-        BLOCK: 100,
-      },
+      { key: "from_engine", id: lastId },
+      { COUNT: 1, BLOCK: 100 },
     );
     if (!response) continue;
-    //@ts-ignore
-    const responsePayload = JSON.parse(response[0]?.message[0]);
-    const message = responsePayload.message;
-    const fn = storeResolve.get(message.loopBackId) as (value: unknown) => void;
-    if (fn) {
-      fn(message.data);
+
+    const entry = response[0]?.messages[0];
+    if (!entry) continue;
+    lastId = entry.id;
+
+    const raw = entry.message.message;
+    if (!raw) continue;
+
+    let parsed: { loopBackId: string; data: unknown };
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      console.error("received malformed message from_engine stream:", raw);
+      continue;
     }
-    storeResolve.delete(message.loopBackId);
+
+    const pending = pendingRequests.get(parsed.loopBackId);
+    if (pending) {
+      clearTimeout(pending.timer);
+      pending.resolve(parsed.data);
+      pendingRequests.delete(parsed.loopBackId);
+    }
   }
 }
 

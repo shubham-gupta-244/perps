@@ -1,6 +1,7 @@
 import db from "../db";
 import type { create_order } from "@repo/types";
-import type { LongShort } from "../utils/types";
+import type { BidAsk } from "../utils/types";
+import orderBook from "../db/orderBook";
 
 class MatchingEngine {
   private matchOpposingOrderBook(
@@ -9,48 +10,50 @@ class MatchingEngine {
   ): number {
     // get the best ask and bids from oderbook
     let remaingQuantity = order.quantity;
-    let availableMatch: LongShort[] = [];
+    let availableMatch: BidAsk[] = [];
 
-    // if the order side buy then best match should be find from Shorts and  viceversa
     const opposingSide =
-      order.side === "BUY" ? db.orderBook.Shorts : db.orderBook.Longs;
-    const opposingPrice =
-      order.side === "BUY" ? db.orderBook.shortPrice : db.orderBook.longPrice;
+      order.side === "Bid" ? db.orderBook.Asks : db.orderBook.Bids;
 
-    // run the loop until the quantity is greater than 0
-    while (remaingQuantity > 0) {
-      outer: for (const price of opposingPrice) {
-        //function which is taken as an input in top level matching function , it take a number as a input and checks wheather the number is greater than or less than orderPrice and return true or false
-        if (!cantMatchPrice(price)) {
-          break;
-        }
+    // returns an array that has all the price in ascending or desceding order based on buy or sell
+    const opposingPrice = opposingSide.arrangedPrice;
 
-        // get all the longs and shorts present at that price
-        const getMatch = opposingSide.maps.get(price) ?? [];
-
-        if (!getMatch || getMatch.length === 0) continue;
-
-        // iterate over all the longs and shorts which you fetched from from orderbook
-        for (const match of getMatch) {
-          // if the quantity needed by order is greater than the quantity in current long/short eat the whole LongShot orderwise reduce the quantity of particular long and short by quantityneeded
-          if (remaingQuantity > 0) {
-            remaingQuantity -=
-              remaingQuantity > match.quantity
-                ? match.quantity
-                : remaingQuantity;
-            availableMatch.push(match);
-          } else {
-            break outer;
-          }
-        }
+    // single pass over price levels, best to worst; stop early once filled
+    // or once a price no longer satisfies the order
+    outer: for (const price of opposingPrice) {
+      //function which is taken as an input in top level matching function , it take a number as a input and checks wheather the number is greater than or less than orderPrice and return true or false
+      if (!cantMatchPrice(price)) {
+        break;
       }
 
-      const fillMap = db.fills.generateFills(order, availableMatch);
+      const getMatch = opposingSide.maps.get(price) ?? [];
+
+      if (getMatch.length === 0) continue;
+
+      for (const match of getMatch) {
+        if (remaingQuantity <= 0) {
+          break outer;
+        }
+        remaingQuantity -=
+          remaingQuantity > match.remainingQuantity
+            ? match.remainingQuantity
+            : remaingQuantity;
+        availableMatch.push(match);
+      }
     }
 
-    // generate the fills
+    if (availableMatch.length > 0) {
+      // generate the fills (this also decrements each match's remainingQuantity)
+      const fillResult = db.fills.generateFills(order, availableMatch);
+      remaingQuantity = fillResult.remainingQuantity;
 
-    // generate the positions
+      // create positions
+
+      const removeMatchOrder =
+        order.side === "Bid"
+          ? orderBook.Asks.deleteSide(fillResult.fillMap)
+          : orderBook.Bids.deleteSide(fillResult.fillMap);
+    }
 
     return remaingQuantity;
   }
@@ -71,13 +74,19 @@ class MatchingEngine {
     const remaingQuantity = this.matchOpposingOrderBook(
       order,
       (bestMatchPrice) => {
-        return order.side === "BUY"
+        return order.side === "Bid"
           ? bestMatchPrice <= order.limitPrice
           : bestMatchPrice >= order.limitPrice;
       },
     );
     if (remaingQuantity > 0) {
+      const orderForBook = order;
+      orderForBook.quantity = remaingQuantity;
       // add the remainig quantity to orderbook
+      const addSide =
+        order.side === "Bid"
+          ? orderBook.Bids.addSide(orderForBook)
+          : orderBook.Asks.addSide(orderForBook);
     }
   }
 

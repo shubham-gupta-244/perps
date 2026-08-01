@@ -15,7 +15,7 @@ export const signupcontroller = async (
 ): Promise<void> => {
   const validrequest = requestBody.safeParse(req.body);
   if (!validrequest.success) {
-    res.status(404).json({ messsage: "invalid request object" });
+    res.status(400).json({ message: "invalid request object" });
     return;
   }
   const { username, password } = req.body;
@@ -24,17 +24,21 @@ export const signupcontroller = async (
   });
 
   if (finduser) {
-    res.status(404).json({ message: "username already taken" });
+    res.status(409).json({ message: "username already taken" });
     return;
   }
 
-  const hashpass = await bcrypt.hash(password, 5);
+  const hashpass = await bcrypt.hash(password, 10);
 
   const createuser = await prisma.user.create({
-    data: { username, password: hashpass },
+    data: {
+      username,
+      password: hashpass,
+      wallet: { create: { balance: 0, freeBalance: 0, lockedBalance: 0 } },
+    },
   });
 
-  res.status(404).json({ message: "user has been successfully created" });
+  res.status(201).json({ message: "user has been successfully created" });
 };
 
 export const loginController = async (
@@ -43,7 +47,7 @@ export const loginController = async (
 ): Promise<void> => {
   const validrequest = requestBody.safeParse(req.body);
   if (!validrequest.success) {
-    res.status(404).json({ messsage: "invalid request object" });
+    res.status(400).json({ message: "invalid request object" });
     return;
   }
   const { username, password } = req.body;
@@ -51,13 +55,13 @@ export const loginController = async (
     where: { username: username },
   });
   if (!finduser) {
-    res.status(404).json({ message: "user with this username does not exist" });
+    res.status(401).json({ message: "incorrect credentials" });
     return;
   }
-  const verifypass = bcrypt.compare(password, finduser.password);
+  const verifypass = await bcrypt.compare(password, finduser.password);
 
   if (!verifypass) {
-    res.status(404).json({ message: "incorrect credential" });
+    res.status(401).json({ message: "incorrect credentials" });
     return;
   }
 

@@ -1,4 +1,4 @@
-export type LongShort = {
+export type BidAsk = {
   id: string;
   userId: string;
   orderId: string;
@@ -6,7 +6,7 @@ export type LongShort = {
   quantity: number;
   remainingQuantity: number;
   timeStamp: number;
-  side: "Long" | "Short";
+  side: "Bid" | "Ask";
   type: "Limit" | "Market";
   lockedCollateral: number;
   lavarage: number;

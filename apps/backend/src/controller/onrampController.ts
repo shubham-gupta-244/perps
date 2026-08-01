@@ -4,7 +4,7 @@ import z from "zod";
 import { ValidationError } from "../Error/validationError";
 
 const onrampSchema = z.object({
-  amount: z.number(),
+  amount: z.number().positive(),
 });
 
 export const onrampController = async (
@@ -14,12 +14,15 @@ export const onrampController = async (
   const userId = req.user?.userId;
   const requirebody = onrampSchema.safeParse(req.body);
   if (!requirebody.success) {
-    throw new ValidationError([{ path: "amount", message: "" }]);
+    throw new ValidationError([{ path: "amount", message: "amount must be a positive number" }]);
   }
-  const amount = req.body.amount;
-  const updateBalance = await prisma.wallet.update({
+  const { amount } = requirebody.data;
+  const updatedWallet = await prisma.wallet.update({
     where: { userId: userId },
-    data: { balance: amount },
+    data: {
+      balance: { increment: amount },
+      freeBalance: { increment: amount },
+    },
   });
-  return;
+  res.status(200).json({ message: "balance updated", wallet: updatedWallet });
 };
