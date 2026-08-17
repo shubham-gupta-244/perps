@@ -1,5 +1,12 @@
-class RiskEngine {}
+import { Users } from "../db/user";
+import { PositionManager } from "../positions/positionManager";
 
-const riskEngine = new RiskEngine();
-export default riskEngine;
-export type { RiskEngine };
+export class RiskEngine {
+  private users: Users;
+  private positionManager: PositionManager;
+
+  constructor(users: Users, positionManager: PositionManager) {
+    this.users = users;
+    this.positionManager = positionManager;
+  }
+}

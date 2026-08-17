@@ -1,4 +1,4 @@
-import matchingEngine from "./core/matchingEngine";
+import db from "./db/db";
 import { connectClients } from "./utils/redis";
 import { engineToBackend } from "./utils/sendToBackend";
 
@@ -40,7 +40,7 @@ async function startEngine() {
           const data = message.data as create_order;
           const riskEngineResponse = { data: "", success: false };
           if (riskEngineResponse.success) {
-            const OrdreBookresponse = matchingEngine.handleOrder(data);
+            const OrdreBookresponse = db.matchingEngine.handleOrder(data);
             engineToBackend(OrdreBookresponse);
           } else {
             throw new Error("user does not enogh asset or balance");

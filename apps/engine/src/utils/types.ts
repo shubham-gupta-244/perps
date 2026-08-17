@@ -9,15 +9,14 @@ export type BidAsk = {
   side: "Bid" | "Ask";
   type: "Limit" | "Market";
   lockedCollateral: number;
-  lavarage: number;
+  leverage: number;
 };
 
 export type Fills = {
   makerId: string;
   takerId: string;
   makerOrderId: string;
-  takerOrderId: String;
-  marketId: string;
+  takerOrderId: string;
   price: number;
   qunatity: number;
   createdAt: Date;

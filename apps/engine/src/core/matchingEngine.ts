@@ -1,9 +1,24 @@
-import db from "../db";
 import type { create_order } from "@repo/types";
 import type { BidAsk } from "../utils/types";
-import orderBook from "../db/orderBook";
+import { OrderBook } from "../db/orderBook";
+import { Fill } from "../db/fills";
+import { PositionManager } from "../positions/positionManager";
 
-class MatchingEngine {
+export class MatchingEngine {
+  private orderBook: OrderBook;
+  private fills: Fill;
+  private positionManager: PositionManager;
+
+  constructor(
+    orderBook: OrderBook,
+    fills: Fill,
+    positionManager: PositionManager,
+  ) {
+    this.orderBook = orderBook;
+    this.fills = fills;
+    this.positionManager = positionManager;
+  }
+
   private matchOpposingOrderBook(
     order: create_order,
     cantMatchPrice: (bestMatchPrice: number) => boolean,
@@ -13,13 +28,11 @@ class MatchingEngine {
     let availableMatch: BidAsk[] = [];
 
     const opposingSide =
-      order.side === "Bid" ? db.orderBook.Asks : db.orderBook.Bids;
+      order.side === "Bid" ? this.orderBook.Asks : this.orderBook.Bids;
 
     // returns an array that has all the price in ascending or desceding order based on buy or sell
     const opposingPrice = opposingSide.arrangedPrice;
 
-    // single pass over price levels, best to worst; stop early once filled
-    // or once a price no longer satisfies the order
     outer: for (const price of opposingPrice) {
       //function which is taken as an input in top level matching function , it take a number as a input and checks wheather the number is greater than or less than orderPrice and return true or false
       if (!cantMatchPrice(price)) {
@@ -34,6 +47,7 @@ class MatchingEngine {
         if (remaingQuantity <= 0) {
           break outer;
         }
+
         remaingQuantity -=
           remaingQuantity > match.remainingQuantity
             ? match.remainingQuantity
@@ -44,15 +58,16 @@ class MatchingEngine {
 
     if (availableMatch.length > 0) {
       // generate the fills (this also decrements each match's remainingQuantity)
-      const fillResult = db.fills.generateFills(order, availableMatch);
+      const fillResult = this.fills.generateFills(order, availableMatch);
       remaingQuantity = fillResult.remainingQuantity;
 
+      this.positionManager.generatePositions(fillResult.fillMap, order);
       // create positions
 
       const removeMatchOrder =
         order.side === "Bid"
-          ? orderBook.Asks.deleteSide(fillResult.fillMap)
-          : orderBook.Bids.deleteSide(fillResult.fillMap);
+          ? this.orderBook.Asks.deleteSide(fillResult.fillMap)
+          : this.orderBook.Bids.deleteSide(fillResult.fillMap);
     }
 
     return remaingQuantity;
@@ -80,25 +95,21 @@ class MatchingEngine {
       },
     );
     if (remaingQuantity > 0) {
-      const orderForBook = order;
-      orderForBook.quantity = remaingQuantity;
+      const orderForBook = { ...order, quantity: remaingQuantity };
       // add the remainig quantity to orderbook
       const addSide =
         order.side === "Bid"
-          ? orderBook.Bids.addSide(orderForBook)
-          : orderBook.Asks.addSide(orderForBook);
+          ? this.orderBook.Bids.addSide(orderForBook)
+          : this.orderBook.Asks.addSide(orderForBook);
     }
   }
 
   // function handles the order function
   public handleOrder(order: create_order) {
     if (order.ordertype === "LIMIT") {
-      this.processLimitOrder(order);
+      const responseForLimit = this.processLimitOrder(order);
     } else {
-      this.processMarketOrder(order);
+      const responseForMarket = this.processMarketOrder(order);
     }
   }
 }
-
-const matchingEngine = new MatchingEngine();
-export default matchingEngine;

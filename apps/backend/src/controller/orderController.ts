@@ -6,9 +6,8 @@ import { createLoopBackId } from "../utils/loopbackId";
 
 const orderparser = z.object({
   quantity: z.number().positive(),
-  marketId: z.string(),
   price: z.number().positive(),
-  ordertype: z.enum(["LIMIT", "Market"]),
+  ordertype: z.enum(["LIMIT", "MARKET"]),
   side: z.enum(["Bid", "Ask"]),
   leverage: z.number().positive(),
   margin: z.number().positive(),
@@ -22,7 +21,7 @@ export const OrderController = async (req: Request, res: Response): Promise<void
     res.status(400).json({ message: "invalid form of body", issues: validbody.error.issues });
     return;
   }
-  const { quantity, marketId, price, ordertype, side, leverage, margin, liquidationPrice } =
+  const { quantity, price, ordertype, side, leverage, margin, liquidationPrice } =
     validbody.data;
 
   const wallet = await prisma.wallet.findUnique({ where: { userId } });
@@ -34,12 +33,11 @@ export const OrderController = async (req: Request, res: Response): Promise<void
   const order = await prisma.order.create({
     data: {
       walletId: wallet.id,
-      marketId,
       orderType: ordertype === "LIMIT" ? "LIMIT" : "MARKET",
       side: side === "Bid" ? "BID" : "ASK",
       quantity,
       price,
-      lavreage: leverage,
+      leverage,
       liquidationPrice,
       lockedBalance: margin,
       status: "OPEN",
@@ -50,7 +48,6 @@ export const OrderController = async (req: Request, res: Response): Promise<void
   const response = await sendToStream({
     type: "create_order",
     data: {
-      marketId,
       userId,
       orderId: order.id,
       limitPrice: price,
@@ -58,7 +55,7 @@ export const OrderController = async (req: Request, res: Response): Promise<void
       quantity,
       side,
       margin,
-      lavarage: leverage,
+      leverage,
       liquidationPrice,
     },
     loopBackId,

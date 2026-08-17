@@ -21,7 +21,6 @@ model User {
 model Position {
   id               String    @id @default(uuid())
   userId           String
-  marketId         String
   quantity         Int
   price            Int
   type             orderType
@@ -50,26 +49,14 @@ model Wallet {
   @@map("wallet")
 }
 
-model Market {
-  id     String @id @default(uuid())
-  url    String
-  name   String
-  symbol String
-
-  // lockedBalance  lockStockBalance[]
-  @@map("market")
-}
-
-
 model Order {
   id               String    @id @default(uuid())
   walletId         String
-  marketId         String
   orderType        orderType
   side             side
   quantity         Int
   price            Int
-  lavreage         Int
+  leverage         Int
   liquidationPrice Int
   lockedBalance    Int
   status           status

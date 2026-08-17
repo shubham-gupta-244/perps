@@ -3,11 +3,6 @@ export type add_balance = {
   balance: number;
 };
 
-export type create_market = {
-  slug: string;
-  imageUrl: string;
-};
-
 export type cancel_order = {
   userId: string;
   orderId: string;
@@ -23,13 +18,12 @@ export type user_balance = {
 export type create_order = {
   orderId: string;
   userId: string;
-  marketId: string;
   quantity: number;
   limitPrice: number;
   side: "Bid" | "Ask";
   ordertype: "MARKET" | "LIMIT";
   margin: number;
-  lavarage: number;
+  leverage: number;
   // either take liquidation or margin as input
   liquidationPrice: number;
 };
@@ -42,7 +36,6 @@ export type create_user = {
 };
 
 export type eventData =
-  | create_market
   | create_order
   | create_user
   | add_balance
@@ -51,7 +44,6 @@ export type eventData =
 
 interface PayloadMap {
   add_balance: add_balance;
-  create_market: create_market;
   delete_order: cancel_order;
   user_balance: user_balance;
   create_order: create_order;

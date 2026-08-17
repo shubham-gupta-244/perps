@@ -1,12 +1,11 @@
 import type { create_order } from "@repo/types";
 import type { Fills, BidAsk } from "../utils/types";
 
-class Fill {
+export class Fill {
   public fills: Fills[] = [];
 
   generateFills(order: create_order, availableMatch: BidAsk[]) {
-    const fillMap: Map<string, { match: BidAsk; fillData: Fills }> =
-      new Map();
+    const fillMap: Map<string, { match: BidAsk; fillData: Fills }> = new Map();
     let remainingQuantity = order.quantity;
 
     for (const match of availableMatch) {
@@ -27,7 +26,6 @@ class Fill {
         takerId: order.userId,
         makerOrderId: match.orderId,
         takerOrderId: order.orderId,
-        marketId: order.marketId,
         price: match.price,
         qunatity: filledQuantity,
         createdAt: new Date(),
@@ -40,6 +38,3 @@ class Fill {
     return { fillMap, remainingQuantity };
   }
 }
-
-const fills = new Fill();
-export default fills;

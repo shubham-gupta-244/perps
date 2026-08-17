@@ -1,7 +1,7 @@
 import type { create_order } from "@repo/types";
 import type { Fills, BidAsk } from "../utils/types";
 
-class OrderBook {
+export class OrderBook {
   public Bids = new OrderBookSide("Bid", "desc");
   public Asks = new OrderBookSide("Ask", "asc");
 
@@ -9,8 +9,6 @@ class OrderBook {
   public minMargin = 100;
 
   public lastTradePrice: number = 0;
-
-  constructor() {}
 }
 
 class OrderBookSide {
@@ -83,7 +81,7 @@ class OrderBookSide {
       side: this.side,
       type: order.ordertype === "LIMIT" ? "Limit" : "Market",
       lockedCollateral: order.margin,
-      lavarage: order.lavarage,
+      leverage: order.leverage,
     };
 
     const findBidAsk = this.maps.get(order.limitPrice);
@@ -96,6 +94,3 @@ class OrderBookSide {
     findBidAsk.push(newBidAsk);
   }
 }
-
-const orderBook = new OrderBook();
-export default orderBook;
