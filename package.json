@@ -9,9 +9,11 @@
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.2",
     "prettier": "^3.7.4",
     "turbo": "^2.10.0",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "wrangler": "^4.124.0"
   },
   "engines": {
     "node": ">=18"

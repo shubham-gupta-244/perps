@@ -3,6 +3,10 @@ import type { User } from "../utils/types";
 export class Users {
   public users: User[] = [];
 
+  // lockedBalance
+  // freeBalance
+  // balance
+
   constructor() {}
 
   getUser(userId: string): User {
@@ -13,28 +17,41 @@ export class Users {
     return user;
   }
 
-  getUserBalance(userId: string) {}
-
   getUserPositions(userId: string) {}
 
-  lockBalance(userId: string, balance: number) {
-    return true;
+  updateUserBalance(userId: string) {
+    const user = this.getUser(userId);
   }
 
-  creditUserMargin(
+  updateLockBalance(
     userId: string,
     amount: number,
     type: "reduce" | "add",
   ): boolean {
+    const positiveAmount = Math.abs(amount);
     const user = this.getUser(userId);
+    const balanceToUpdate =
+      type === "reduce" ? -positiveAmount : positiveAmount;
 
-    //  reducing margin means reducing locked balance and increase the freebalance
-    const balance = type === "reduce" ? -amount : amount;
-    const updateUserLockedBalance = (user.lockedBalance += balance);
-    const userFreeBalance = (user.freeBalance += balance);
-    if (!userFreeBalance && !updateUserLockedBalance) {
+    // if the type is reduce than check first the lockedBalance should be greater or equal to balanceToUpdate
+    if (type === "reduce") {
+      // if lockedBalance is less than the amount than return
+      if (user.lockedBalance < positiveAmount) {
+        return false;
+      }
+      // reduce the lockedBalance and update the freeBalance
+      user.lockedBalance += balanceToUpdate;
+      user.freeBalance -= balanceToUpdate;
+      return true;
+    }
+
+    // if type is add than check the user.freeBalance > amount otherwise return false
+    if (user.freeBalance < positiveAmount) {
       return false;
     }
+    // increase the lockedBalance and reduce free balance
+    user.freeBalance -= balanceToUpdate;
+    user.lockedBalance += balanceToUpdate;
     return true;
   }
 }

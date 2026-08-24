@@ -87,7 +87,7 @@ export class PositionManager {
 
         position.realizedPnl += pnl;
         const marginReleasd = (quantity / absPos) * position.margin;
-        const updated = this.users.creditUserMargin(
+        const updated = this.users.updateLockBalance(
           userId,
           marginReleasd,
           "reduce",
@@ -102,7 +102,7 @@ export class PositionManager {
       if (absPos === absTrade) {
         const pnl = (price - position.entryPrice) * position.size;
         position.realizedPnl += pnl;
-        const updated = this.users.creditUserMargin(
+        const updated = this.users.updateLockBalance(
           userId,
           position.margin,
           "reduce",
@@ -121,7 +121,7 @@ export class PositionManager {
         const remaining = absTrade - absPos;
         position.size = signedQuantity > 0 ? remaining : -remaining;
         position.entryPrice = price;
-        const updated1 = this.users.creditUserMargin(
+        const updated1 = this.users.updateLockBalance(
           userId,
           position.margin,
           "reduce",
@@ -130,7 +130,7 @@ export class PositionManager {
           position.margin = 0;
         }
         const newMargin = (remaining / quantity) * margin;
-        const updated2 = this.users.creditUserMargin(userId, newMargin, "add");
+        const updated2 = this.users.updateLockBalance(userId, newMargin, "add");
         if (updated2) {
           position.margin = newMargin;
         }
