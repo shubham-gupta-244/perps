@@ -17,10 +17,10 @@ export class Users {
     return user;
   }
 
-  getUserPositions(userId: string) {}
-
-  updateUserBalance(userId: string) {
+  updateUserBalance(userId: string, amount: number) {
     const user = this.getUser(userId);
+    if (amount < 0) {
+    }
   }
 
   updateLockBalance(

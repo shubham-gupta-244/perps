@@ -140,6 +140,8 @@ export class PositionManager {
     position.size += signedQuantity;
   }
 
+  getUserPosition(userId: string) {}
+
   updateUnrealizedPnl(indexPrice: number) {
     for (const [key, value] of this.positions) {
       if (value.size === 0) {

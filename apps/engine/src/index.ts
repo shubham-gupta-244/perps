@@ -41,7 +41,7 @@ async function startEngine() {
           const riskEngineResponse = { data: "", success: false };
           if (riskEngineResponse.success) {
             const OrdreBookresponse = db.matchingEngine.handleOrder(data);
-            engineToBackend(OrdreBookresponse);
+            engineToBackend(OrdreBookresponse ?? "");
           } else {
             throw new Error("user does not enogh asset or balance");
             break;

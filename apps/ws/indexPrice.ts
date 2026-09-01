@@ -37,5 +37,6 @@ function connect(): void {
     ws.close();
   });
 }
+
 export { indexPrice, lastUpdate };
 connect();
