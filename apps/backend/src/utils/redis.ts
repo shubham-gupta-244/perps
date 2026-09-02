@@ -4,8 +4,8 @@ export async function connectClient(): Promise<{
   readerClient: RedisClientType;
   writerClient: RedisClientType;
 }> {
-  const readerClient = createClient();
-  const writerClient = createClient();
+  const readerClient = createClient({ url: process.env.REDIS_URL ?? "redis://localhost:6379" });
+  const writerClient = createClient({ url: process.env.REDIS_URL ?? "redis://localhost:6379" });
 
   readerClient.on("error", (err) => {
     console.log(err);

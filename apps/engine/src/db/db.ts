@@ -11,7 +11,7 @@ const positionManager = new PositionManager(users);
 // passing a class as an argument in another class is also known as dependency injection rather than importing a instance of class at multiple place just import everthing in a single file and pass them to eachother as per dependency of class
 const riskEngine = new RiskEngine(users, positionManager);
 const fills = new Fill();
-const matchingEngine = new MatchingEngine(orderBook, fills, positionManager);
+const matchingEngine = new MatchingEngine(orderBook, fills, positionManager, users);
 
 const db = {
   orderBook,

@@ -22,6 +22,9 @@ function connect(): void {
       const parsed: MarkPriceStream = JSON.parse(data.toString());
       indexPrice = parseFloat(parsed.i);
       lastUpdate = Date.now();
+      Bun.redis.set("index_price", indexPrice.toString()).catch((err) => {
+        console.error("failed to publish index price", err);
+      });
     } catch (err) {
       console.error("parse error", err);
     }

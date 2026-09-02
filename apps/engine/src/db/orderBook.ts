@@ -9,6 +9,23 @@ export class OrderBook {
   public minMargin = 100;
 
   public lastTradePrice: number = 0;
+
+  getSnapshot(levels = 20) {
+    const levelOf = (side: OrderBookSide) =>
+      side.arrangedPrice.slice(0, levels).map((price) => ({
+        price,
+        quantity: (side.maps.get(price) ?? []).reduce(
+          (sum, entry) => sum + entry.remainingQuantity,
+          0,
+        ),
+      }));
+
+    return {
+      bids: levelOf(this.Bids),
+      asks: levelOf(this.Asks),
+      lastTradePrice: this.lastTradePrice,
+    };
+  }
 }
 
 class OrderBookSide {
@@ -67,6 +84,21 @@ class OrderBookSide {
         }
       }
     }
+  }
+
+  cancelOrder(orderId: string, price: number): BidAsk | undefined {
+    const level = this.maps.get(price);
+    if (!level) return undefined;
+
+    const index = level.findIndex((entry) => entry.orderId === orderId);
+    if (index === -1) return undefined;
+
+    const [removed] = level.splice(index, 1);
+    if (level.length === 0) {
+      this.maps.delete(price);
+      this.removePrice(price);
+    }
+    return removed;
   }
 
   addSide(order: create_order) {

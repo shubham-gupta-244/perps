@@ -67,6 +67,70 @@ export const OrderController = async (req: Request, res: Response): Promise<void
     });
     return;
   }
+
+  if (!response.success) {
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { status: "CLOSE" },
+    });
+    res.status(400).json({
+      message: response.message ?? "order was rejected by the matching engine",
+      orderId: order.id,
+    });
+    return;
+  }
+
+  const orderResult = response.data as
+    | {
+        status: string;
+        fills?: {
+          makerId: string;
+          takerId: string;
+          makerOrderId: string;
+          takerOrderId: string;
+          price: number;
+          qunatity: number;
+        }[];
+      }
+    | undefined;
+  const statusMap: Record<string, "OPEN" | "PARTIALLYFILLED" | "CLOSE"> = {
+    OPEN: "OPEN",
+    PARTIAL: "PARTIALLYFILLED",
+    FILLED: "CLOSE",
+    CANCELLED: "CLOSE",
+  };
+  if (orderResult && statusMap[orderResult.status]) {
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { status: statusMap[orderResult.status] },
+    });
+  }
+
+  if (orderResult?.fills && orderResult.fills.length > 0) {
+    const userIds = Array.from(
+      new Set(orderResult.fills.flatMap((f) => [f.makerId, f.takerId])),
+    );
+    const wallets = await prisma.wallet.findMany({
+      where: { userId: { in: userIds } },
+    });
+    const walletByUserId = new Map(wallets.map((w) => [w.userId, w.id]));
+
+    await prisma.fills.createMany({
+      data: orderResult.fills
+        .filter(
+          (f) => walletByUserId.has(f.makerId) && walletByUserId.has(f.takerId),
+        )
+        .map((f) => ({
+          makerId: walletByUserId.get(f.makerId)!,
+          takerId: walletByUserId.get(f.takerId)!,
+          makerOrderId: f.makerOrderId,
+          takerOrderId: f.takerOrderId,
+          price: f.price,
+          quantity: f.qunatity,
+        })),
+    });
+  }
+
   res.status(200).json({
     message: "order has been placed",
     orderId: order.id,
@@ -141,6 +205,13 @@ export const deleteOrder = async (
   if (!response) {
     res.status(504).json({
       message: "did not receive a response from the matching engine in time",
+    });
+    return;
+  }
+
+  if (!response.success) {
+    res.status(400).json({
+      message: response.message ?? "order could not be cancelled",
     });
     return;
   }

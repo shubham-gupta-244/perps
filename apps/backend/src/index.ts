@@ -11,6 +11,8 @@ import { authRouter } from "./routes/auth";
 import { orderRouter } from "./routes/order";
 import type { JwtPayload } from "jsonwebtoken";
 import { fillsRouter } from "./routes/fill";
+import { walletRouter } from "./routes/wallet";
+import { marketRouter } from "./routes/market";
 import { connectClient } from "./utils/redis";
 import { globalErrorHandler } from "./middleware/globalErrorHandler";
 
@@ -22,6 +24,8 @@ app.use(cors());
 app.use(authRouter);
 app.use(orderRouter);
 app.use(fillsRouter);
+app.use(walletRouter);
+app.use(marketRouter);
 
 app.use(globalErrorHandler);
 

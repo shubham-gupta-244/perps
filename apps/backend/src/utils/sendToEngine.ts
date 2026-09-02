@@ -1,14 +1,30 @@
-import type { payload } from "@repo/types";
-import { readerClient, writerClient } from "..";
+import type { payload, EngineResponse } from "@repo/types";
+import { createClient, type RedisClientType } from "redis";
+
+let readerClient: RedisClientType | null = null;
+let writerClient: RedisClientType | null = null;
+
+async function getClients() {
+  if (readerClient && writerClient) return { readerClient, writerClient };
+  readerClient = createClient({ url: process.env.REDIS_URL ?? "redis://localhost:6379" });
+  writerClient = createClient({ url: process.env.REDIS_URL ?? "redis://localhost:6379" });
+  readerClient.on("error", (err) => console.log(err));
+  writerClient.on("error", (err) => console.log(err));
+  await Promise.all([readerClient.connect(), writerClient.connect()]);
+  return { readerClient, writerClient };
+}
 
 type PendingRequest = {
-  resolve: (value: unknown) => void;
+  resolve: (value: Omit<EngineResponse, "loopBackId"> | null) => void;
   timer: ReturnType<typeof setTimeout>;
 };
 
 const pendingRequests = new Map<string, PendingRequest>();
 
-export async function sendToStream(event: payload): Promise<unknown> {
+export async function sendToStream(
+  event: payload,
+): Promise<Omit<EngineResponse, "loopBackId"> | null> {
+  const { writerClient } = await getClients();
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
       if (pendingRequests.delete(event.loopBackId)) {
@@ -31,6 +47,7 @@ export async function sendToStream(event: payload): Promise<unknown> {
 }
 
 async function main() {
+  const { readerClient } = await getClients();
   let lastId = "$";
   while (true) {
     const response = await readerClient.xRead(
@@ -46,7 +63,7 @@ async function main() {
     const raw = entry.message.message;
     if (!raw) continue;
 
-    let parsed: { loopBackId: string; data: unknown };
+    let parsed: EngineResponse;
     try {
       parsed = JSON.parse(raw);
     } catch {
@@ -57,7 +74,8 @@ async function main() {
     const pending = pendingRequests.get(parsed.loopBackId);
     if (pending) {
       clearTimeout(pending.timer);
-      pending.resolve(parsed.data);
+      const { loopBackId, ...rest } = parsed;
+      pending.resolve(rest);
       pendingRequests.delete(parsed.loopBackId);
     }
   }

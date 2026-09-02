@@ -1,5 +1,4 @@
 import { createClient, type RedisClientType } from "redis";
-import type { EngineResponse } from "@repo/types";
 
 let client: RedisClientType | null = null;
 
@@ -11,7 +10,10 @@ async function getClient(): Promise<RedisClientType> {
   return client;
 }
 
-export async function engineToBackend(response: EngineResponse) {
-  const writer = await getClient();
-  await writer.xAdd("from_engine", "*", { message: JSON.stringify(response) });
+export async function getIndexPrice(): Promise<number | null> {
+  const reader = await getClient();
+  const raw = await reader.get("index_price");
+  if (!raw) return null;
+  const price = parseFloat(raw);
+  return Number.isFinite(price) ? price : null;
 }

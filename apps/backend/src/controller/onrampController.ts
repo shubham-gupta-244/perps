@@ -2,6 +2,8 @@ import prisma from "@repo/db";
 import type { Request, Response } from "express";
 import z from "zod";
 import { ValidationError } from "../Error/validationError";
+import { sendToStream } from "../utils/sendToEngine";
+import { createLoopBackId } from "../utils/loopbackId";
 
 const onrampSchema = z.object({
   amount: z.number().positive(),
@@ -24,5 +26,11 @@ export const onrampController = async (
       freeBalance: { increment: amount },
     },
   });
+  await sendToStream({
+    type: "add_balance",
+    data: { userId: userId as string, balance: amount },
+    loopBackId: createLoopBackId(6),
+  });
+
   res.status(200).json({ message: "balance updated", wallet: updatedWallet });
 };

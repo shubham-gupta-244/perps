@@ -2,6 +2,7 @@ import type { create_order } from "@repo/types";
 import type { BidAsk, Fills } from "../utils/types";
 import { Position } from "./postitons";
 import type { Users } from "../db/user";
+import { computeLiquidationPrice } from "../risk/liquidation";
 
 export class PositionManager {
   private positions: Map<string, Position> = new Map();
@@ -27,6 +28,7 @@ export class PositionManager {
         fillData.price,
         fillData.qunatity,
         makerMargin,
+        match.leverage,
       );
       // taker leg of the fill
       this.applyFill(
@@ -35,6 +37,7 @@ export class PositionManager {
         fillData.price,
         fillData.qunatity,
         takerMargin,
+        order.leverage,
       );
     }
   }
@@ -45,9 +48,8 @@ export class PositionManager {
     price: number,
     quantity: number,
     margin: number,
+    leverage: number,
   ) {
-    // first check if the user already holds a position or not, if not
-    // create a new one and use it for the update below
     let position = this.positions.get(userId);
     if (!position) {
       position = new Position(userId);
@@ -60,6 +62,8 @@ export class PositionManager {
       position.entryPrice = price;
       position.size = signedQuantity;
       position.margin = margin;
+      position.leverage = leverage;
+      this.refreshLiqPrice(position);
       return;
     }
 
@@ -71,6 +75,8 @@ export class PositionManager {
       position.entryPrice = (existingNotionalValue + fillNotional) / newSize;
       const newMargin = position.margin + margin;
       position.margin = newMargin;
+      position.leverage = leverage;
+      this.refreshLiqPrice(position);
     }
 
     // reducing , closing and flipping the position
@@ -94,6 +100,7 @@ export class PositionManager {
         );
         if (updated) {
           position.margin -= marginReleasd;
+          this.users.applyRealizedPnl(userId, pnl);
         }
 
         // close the position
@@ -109,7 +116,11 @@ export class PositionManager {
         );
         if (updated) {
           position.margin = 0;
+          this.users.applyRealizedPnl(userId, pnl);
         }
+        position.size = 0;
+        position.entryPrice = 0;
+        position.liqPrice = 0;
       }
 
       // flip the position
@@ -128,24 +139,63 @@ export class PositionManager {
         );
         if (updated1) {
           position.margin = 0;
+          this.users.applyRealizedPnl(userId, pnl);
         }
         const newMargin = (remaining / quantity) * margin;
         const updated2 = this.users.updateLockBalance(userId, newMargin, "add");
         if (updated2) {
           position.margin = newMargin;
         }
+        position.leverage = leverage;
+        this.refreshLiqPrice(position);
         return;
       }
     }
     position.size += signedQuantity;
   }
 
-  getUserPosition(userId: string) {}
+  private refreshLiqPrice(position: Position) {
+    if (position.size === 0) {
+      position.liqPrice = 0;
+      return;
+    }
+    const side = position.size > 0 ? "LONG" : "SHORT";
+    position.liqPrice = computeLiquidationPrice(
+      position.entryPrice,
+      position.leverage,
+      side,
+    );
+  }
+
+  getUserPosition(userId: string): Position | undefined {
+    return this.positions.get(userId);
+  }
+
+  allPositions(): Position[] {
+    return Array.from(this.positions.values());
+  }
+
+  forceClose(userId: string, price: number) {
+    const position = this.positions.get(userId);
+    if (!position || position.size === 0) return;
+
+    const pnl = (price - position.entryPrice) * position.size;
+    position.realizedPnl += pnl;
+    this.users.updateLockBalance(userId, position.margin, "reduce");
+    this.users.applyRealizedPnl(userId, pnl);
+    position.margin = 0;
+    position.size = 0;
+    position.entryPrice = 0;
+    position.liqPrice = 0;
+    position.unrealizedPnl = 0;
+  }
 
   updateUnrealizedPnl(indexPrice: number) {
     for (const [key, value] of this.positions) {
       if (value.size === 0) {
         value.unrealizedPnl = 0;
+        value.lastMarkPrice = indexPrice;
+        continue;
       }
       const unrealizePnl = (indexPrice - value.entryPrice) * value.size;
       value.unrealizedPnl = unrealizePnl;
@@ -153,10 +203,3 @@ export class PositionManager {
     }
   }
 }
-
-// size
-// margin
-// enteryprice
-// liquidationPrice
-// realizedPnl
-// lastMarketPice

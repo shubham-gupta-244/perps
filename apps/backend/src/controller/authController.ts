@@ -3,6 +3,8 @@ import bcrypt from "bcrypt";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 import  prisma  from "@repo/db";
+import { sendToStream } from "../utils/sendToEngine";
+import { createLoopBackId } from "../utils/loopbackId";
 
 const requestBody = z.object({
   username: z.string(),
@@ -36,6 +38,17 @@ export const signupcontroller = async (
       password: hashpass,
       wallet: { create: { balance: 0, freeBalance: 0, lockedBalance: 0 } },
     },
+  });
+
+  await sendToStream({
+    type: "create_user",
+    data: {
+      username,
+      usd_Balance: 0,
+      lockedBalance: 0,
+      userid: createuser.id,
+    },
+    loopBackId: createLoopBackId(6),
   });
 
   res.status(201).json({ message: "user has been successfully created" });

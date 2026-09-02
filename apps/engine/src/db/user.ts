@@ -3,11 +3,11 @@ import type { User } from "../utils/types";
 export class Users {
   public users: User[] = [];
 
-  // lockedBalance
-  // freeBalance
-  // balance
-
   constructor() {}
+
+  hasUser(userId: string): boolean {
+    return this.users.some((x) => x.userId === userId);
+  }
 
   getUser(userId: string): User {
     const user = this.users.find((x) => x.userId === userId);
@@ -17,10 +17,30 @@ export class Users {
     return user;
   }
 
-  updateUserBalance(userId: string, amount: number) {
-    const user = this.getUser(userId);
-    if (amount < 0) {
+  addUser(userId: string, initialBalance = 0): User {
+    if (this.hasUser(userId)) {
+      return this.getUser(userId);
     }
+    const user: User = {
+      userId,
+      balance: initialBalance,
+      freeBalance: initialBalance,
+      lockedBalance: 0,
+    };
+    this.users.push(user);
+    return user;
+  }
+
+  creditBalance(userId: string, amount: number) {
+    const user = this.getUser(userId);
+    user.balance += amount;
+    user.freeBalance += amount;
+  }
+
+  applyRealizedPnl(userId: string, pnl: number) {
+    const user = this.getUser(userId);
+    user.balance += pnl;
+    user.freeBalance += pnl;
   }
 
   updateLockBalance(

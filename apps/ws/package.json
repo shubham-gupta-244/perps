@@ -4,7 +4,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun ./indexPrice.ts"
+    "dev": "bun --watch ./indexPrice.ts",
+    "build": "tsc --noEmit",
+    "start": "bun ./indexPrice.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

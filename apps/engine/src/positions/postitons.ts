@@ -1,13 +1,10 @@
-import type { BidAsk, Fills } from "../utils/types";
-
-type Side = "LONG" | "SHORT";
-
 export class Position {
   userId: string;
 
   size: number = 0; // +ve long, -ve short
   entryPrice: number = 0;
   margin: number = 0;
+  leverage: number = 1;
 
   unrealizedPnl: number = 0;
   realizedPnl: number = 0;
