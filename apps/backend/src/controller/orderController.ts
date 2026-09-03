@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import prisma from "@repo/db";
 import { submitCommand } from "../engine/client";
 import type { OrderAcceptedEvent, OrderRejectedEvent } from "@repo/events";
+import { BadRequestError, ConflictError, NotFoundError } from "../Error/apiError";
 
 const orderParser = z.object({
   quantity: z.number().positive(),
@@ -15,18 +16,10 @@ const orderParser = z.object({
 
 export const OrderController = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user?.userId as string;
-  const parsed = orderParser.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ message: "invalid body", issues: parsed.error.issues });
-    return;
-  }
-  const { quantity, price, ordertype, side, leverage, margin } = parsed.data;
+  const { quantity, price, ordertype, side, leverage, margin } = orderParser.parse(req.body);
 
   const wallet = await prisma.wallet.findUnique({ where: { userId } });
-  if (!wallet) {
-    res.status(404).json({ message: "wallet not found for this user" });
-    return;
-  }
+  if (!wallet) throw new NotFoundError("wallet not found for this user");
 
   // DB-first: durable order record before the command is emitted.
   const order = await prisma.order.create({
@@ -61,9 +54,7 @@ export const OrderController = async (req: Request, res: Response): Promise<void
   }
 
   if (result.eventType === "order.rejected") {
-    const rej = result as OrderRejectedEvent;
-    res.status(400).json({ message: rej.payload.reason, orderId: order.id });
-    return;
+    throw new BadRequestError((result as OrderRejectedEvent).payload.reason, { orderId: order.id });
   }
 
   const acc = result as OrderAcceptedEvent;
@@ -79,10 +70,8 @@ export const OrderController = async (req: Request, res: Response): Promise<void
 
 export const orderHistory = async (req: Request, res: Response): Promise<void> => {
   const wallet = await prisma.wallet.findUnique({ where: { userId: req.user?.userId } });
-  if (!wallet) {
-    res.status(404).json({ message: "wallet not found for this user" });
-    return;
-  }
+  if (!wallet) throw new NotFoundError("wallet not found for this user");
+
   const orders = await prisma.order.findMany({
     where: { walletId: wallet.id },
     orderBy: { createdAt: "desc" },
@@ -102,24 +91,15 @@ const cancelParser = z.object({
 
 export const deleteOrder = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user?.userId as string;
-  const parsed = cancelParser.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ message: "invalid body", issues: parsed.error.issues });
-    return;
-  }
-  const { orderId, price, side } = parsed.data;
+  const { orderId, price, side } = cancelParser.parse(req.body);
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: { wallet: { select: { userId: true } } },
   });
-  if (!order || order.wallet.userId !== userId) {
-    res.status(404).json({ message: "order not found" });
-    return;
-  }
+  if (!order || order.wallet.userId !== userId) throw new NotFoundError("order not found");
   if (["FILLED", "CANCELLED", "REJECTED", "CLOSE"].includes(order.status)) {
-    res.status(409).json({ message: `order is ${order.status}` });
-    return;
+    throw new ConflictError(`order is ${order.status}`);
   }
 
   const result = await submitCommand(
@@ -136,8 +116,7 @@ export const deleteOrder = async (req: Request, res: Response): Promise<void> =>
     return;
   }
   if (result.eventType === "order.rejected") {
-    res.status(400).json({ message: (result as OrderRejectedEvent).payload.reason });
-    return;
+    throw new BadRequestError((result as OrderRejectedEvent).payload.reason, { orderId });
   }
   res.status(200).json({ message: "order cancelled", orderId });
 };

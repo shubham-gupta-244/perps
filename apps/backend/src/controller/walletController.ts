@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { engineQuery } from "../engine/client";
+import { GatewayTimeoutError } from "../Error/apiError";
 
 export const getBalance = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user?.userId as string;
@@ -7,10 +8,7 @@ export const getBalance = async (req: Request, res: Response): Promise<void> => 
     type: "get_balance",
     userId,
   });
-  if (!data) {
-    res.status(504).json({ message: "engine did not respond in time" });
-    return;
-  }
+  if (!data) throw new GatewayTimeoutError("engine did not respond in time");
   res.status(200).json({ userId, ...data });
 };
 

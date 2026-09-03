@@ -39,5 +39,7 @@ yarn-error.log*
 
 # engine snapshots / local data
 .data/
-.claude
-claude-instruction
+
+# claude tooling / local instructions (do not push)
+.claude/
+apps/claude-instruction/

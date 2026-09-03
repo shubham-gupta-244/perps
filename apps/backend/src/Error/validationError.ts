@@ -1,18 +1,16 @@
+import { ApiError } from "./apiError";
+
 type Issue = {
   path: string;
   message: string;
 };
 
-export class ValidationError extends Error {
+/** A 400 that carries a structured list of field issues. */
+export class ValidationError extends ApiError {
   public issues: Issue[];
 
   constructor(issues: Issue[], message = "Validation failed") {
-    super(message);
-
-    this.name = "ValidationError";
+    super(400, message, { issues });
     this.issues = issues;
-
-    // Fix prototype chain (important in TS/JS)
-    Object.setPrototypeOf(this, ValidationError.prototype);
   }
 }
