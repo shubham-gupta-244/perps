@@ -148,6 +148,18 @@
         "typescript-eslint": "^8.50.0",
       },
     },
+    "packages/events": {
+      "name": "@repo/events",
+      "dependencies": {
+        "zod": "^4.4.3",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
     "packages/logger": {
       "name": "@repo/logger",
       "devDependencies": {
@@ -632,6 +644,8 @@
     "@repo/db": ["@repo/db@workspace:packages/db"],
 
     "@repo/eslint-config": ["@repo/eslint-config@workspace:packages/eslint-config"],
+
+    "@repo/events": ["@repo/events@workspace:packages/events"],
 
     "@repo/logger": ["@repo/logger@workspace:packages/logger"],
 
