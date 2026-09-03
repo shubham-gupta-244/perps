@@ -1,39 +1,21 @@
 import type { Request, Response } from "express";
-import { sendToStream } from "../utils/sendToEngine";
-import { createLoopBackId } from "../utils/loopbackId";
+import { engineQuery } from "../engine/client";
 
 export const getBalance = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user?.userId as string;
-  const response = await sendToStream({
-    type: "user_balance",
-    data: { userId, balance: 0 },
-    loopBackId: createLoopBackId(6),
+  const data = await engineQuery<{ total: number; free: number; locked: number }>({
+    type: "get_balance",
+    userId,
   });
-  if (!response) {
-    res.status(504).json({
-      message: "did not receive a response from the matching engine in time",
-    });
+  if (!data) {
+    res.status(504).json({ message: "engine did not respond in time" });
     return;
   }
-  if (!response.success) {
-    res.status(404).json({ message: response.message ?? "user not found" });
-    return;
-  }
-  res.status(200).json(response.data);
+  res.status(200).json({ userId, ...data });
 };
 
 export const getPosition = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user?.userId as string;
-  const response = await sendToStream({
-    type: "get_position",
-    data: { userId },
-    loopBackId: createLoopBackId(6),
-  });
-  if (!response) {
-    res.status(504).json({
-      message: "did not receive a response from the matching engine in time",
-    });
-    return;
-  }
-  res.status(200).json(response.data);
+  const data = await engineQuery({ type: "get_position", userId });
+  res.status(200).json(data ?? null);
 };

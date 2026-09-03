@@ -7,19 +7,29 @@ declare global {
 }
 import express from "express";
 import cors from "cors";
+import type { JwtPayload } from "jsonwebtoken";
 import { authRouter } from "./routes/auth";
 import { orderRouter } from "./routes/order";
-import type { JwtPayload } from "jsonwebtoken";
 import { fillsRouter } from "./routes/fill";
 import { walletRouter } from "./routes/wallet";
 import { marketRouter } from "./routes/market";
-import { connectClient } from "./utils/redis";
 import { globalErrorHandler } from "./middleware/globalErrorHandler";
+import { initEngineClient } from "./engine/client";
+import { config } from "@repo/config";
+import { createLogger, metrics } from "@repo/logger";
 
+const log = createLogger("api");
 const app = express();
 
 app.use(express.json());
 app.use(cors());
+
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+app.get("/metrics", (_req, res) => {
+  res.type("text/plain").send(metrics.prometheus());
+});
 
 app.use(authRouter);
 app.use(orderRouter);
@@ -29,10 +39,8 @@ app.use(marketRouter);
 
 app.use(globalErrorHandler);
 
-const { readerClient, writerClient } = await connectClient();
-console.log("clinet connected");
-export { readerClient, writerClient };
+await initEngineClient();
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log("server is running on port 3000");
+app.listen(config.api.port, () => {
+  log.info("api listening", { port: config.api.port });
 });

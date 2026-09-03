@@ -21,7 +21,11 @@
     "apps/backend": {
       "name": "backend",
       "dependencies": {
+        "@repo/config": "workspace:*",
         "@repo/db": "workspace:*",
+        "@repo/events": "workspace:*",
+        "@repo/logger": "workspace:*",
+        "@repo/redis-streams": "workspace:*",
         "@repo/types": "workspace:*",
         "@types/bcrypt": "^6.0.0",
         "@types/cors": "^2.8.19",

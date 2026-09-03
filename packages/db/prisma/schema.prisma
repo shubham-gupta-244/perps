@@ -20,16 +20,38 @@ model User {
 
 model Position {
   id               String    @id @default(uuid())
-  userId           String
-  quantity         Int
-  price            Int
-  type             orderType
-  margin           Int
-  liquidationPrice Int
-  avaragePrice     Int
+  userId           String    @unique
+  size             Int       @default(0)
+  entryPrice       Int       @default(0)
+  margin           Int       @default(0)
+  leverage         Int       @default(1)
+  liquidationPrice Int       @default(0)
+  realizedPnl      Int       @default(0)
+  unrealizedPnl    Int       @default(0)
+  markPrice        Int       @default(0)
+  updatedAt        DateTime  @default(now()) @updatedAt
   wallet           Wallet    @relation(fields: [userId], references: [id])
 
   @@map("positions")
+}
+
+/** Idempotency ledger for at-least-once stream consumers (e.g. the db-poller). */
+model ProcessedEvent {
+  consumer  String
+  eventId   String
+  createdAt DateTime @default(now())
+
+  @@id([consumer, eventId])
+  @@map("processed_events")
+}
+
+/** Where a stream consumer's projection last got to (for observability / resume). */
+model ConsumerCheckpoint {
+  consumer    String   @id
+  lastEventId String
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  @@map("consumer_checkpoints")
 }
 
 model Wallet {
@@ -52,6 +74,7 @@ model Wallet {
 model Order {
   id               String    @id @default(uuid())
   walletId         String
+  commandId        String?   @unique
   orderType        orderType
   side             side
   quantity         Int
@@ -59,6 +82,8 @@ model Order {
   leverage         Int
   liquidationPrice Int
   lockedBalance    Int
+  filledQuantity   Int       @default(0)
+  avgFillPrice     Int       @default(0)
   status           status
   makerFills       Fills[]   @relation("makerFills")
   takerFills       Fills[]   @relation("takerFills")
@@ -72,6 +97,7 @@ model Order {
 
 model Fills {
   id           String @id @default(uuid())
+  tradeId      String @unique
   makerId      String
   takerId      String
   makerOrderId String
@@ -89,9 +115,13 @@ model Fills {
 }
 
 enum status {
-  CLOSE
-  PARTIALLYFILLED
+  PENDING
   OPEN
+  PARTIALLYFILLED
+  FILLED
+  CANCELLED
+  REJECTED
+  CLOSE
 }
 
 enum side {

@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "bun --watch ./src/index.ts",
     "build": "tsc --noEmit",
-    "start": "bun ./src/index.ts"
+    "start": "bun ./src/index.ts",
+    "check-types": "tsc --noEmit",
+    "test": "bun test"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14"
@@ -15,7 +17,11 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@repo/config": "workspace:*",
     "@repo/db": "workspace:*",
+    "@repo/events": "workspace:*",
+    "@repo/logger": "workspace:*",
+    "@repo/redis-streams": "workspace:*",
     "@repo/types": "workspace:*",
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
