@@ -169,6 +169,20 @@
         "typescript": "^5",
       },
     },
+    "packages/redis-streams": {
+      "name": "@repo/redis-streams",
+      "dependencies": {
+        "@repo/config": "workspace:*",
+        "@repo/logger": "workspace:*",
+        "redis": "^6.0.1",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
     "packages/types": {
       "name": "@repo/types",
       "devDependencies": {
@@ -648,6 +662,8 @@
     "@repo/events": ["@repo/events@workspace:packages/events"],
 
     "@repo/logger": ["@repo/logger@workspace:packages/logger"],
+
+    "@repo/redis-streams": ["@repo/redis-streams@workspace:packages/redis-streams"],
 
     "@repo/types": ["@repo/types@workspace:packages/types"],
 
