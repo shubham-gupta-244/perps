@@ -1,5 +1,5 @@
 {
-  "name": "ws",
+  "name": "index-price-observer",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
@@ -19,8 +19,6 @@
     "@repo/config": "workspace:*",
     "@repo/events": "workspace:*",
     "@repo/logger": "workspace:*",
-    "@repo/redis-streams": "workspace:*",
-    "jsonwebtoken": "^9.0.3",
-    "@types/jsonwebtoken": "^9.0.10"
+    "@repo/redis-streams": "workspace:*"
   }
 }
