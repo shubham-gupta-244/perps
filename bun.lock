@@ -48,6 +48,13 @@
     },
     "apps/db-Writer": {
       "name": "db-writer",
+      "dependencies": {
+        "@repo/config": "workspace:*",
+        "@repo/db": "workspace:*",
+        "@repo/events": "workspace:*",
+        "@repo/logger": "workspace:*",
+        "@repo/redis-streams": "workspace:*",
+      },
       "devDependencies": {
         "@types/bun": "latest",
       },
