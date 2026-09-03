@@ -105,6 +105,15 @@
         "typescript": "^5",
       },
     },
+    "packages/config": {
+      "name": "@repo/config",
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
     "packages/db": {
       "name": "@repo/db",
       "dependencies": {
@@ -137,6 +146,15 @@
         "globals": "^16.5.0",
         "typescript": "^5.9.2",
         "typescript-eslint": "^8.50.0",
+      },
+    },
+    "packages/logger": {
+      "name": "@repo/logger",
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
       },
     },
     "packages/types": {
@@ -609,9 +627,13 @@
 
     "@redis/time-series": ["@redis/time-series@6.0.1", "", { "peerDependencies": { "@redis/client": "^6.0.1" } }, "sha512-8aLGSDtCpnPTLD7lEiHHmuDCFppctLdT8geFIDf/7LWV9y8Vre6RB+aBZrgkeo3X1oPmTt1IbVAQVxsuJvkODw=="],
 
+    "@repo/config": ["@repo/config@workspace:packages/config"],
+
     "@repo/db": ["@repo/db@workspace:packages/db"],
 
     "@repo/eslint-config": ["@repo/eslint-config@workspace:packages/eslint-config"],
+
+    "@repo/logger": ["@repo/logger@workspace:packages/logger"],
 
     "@repo/types": ["@repo/types@workspace:packages/types"],
 
