@@ -1,12 +1,14 @@
 {
   "name": "engine",
-  "module": "index.ts",
+  "module": "src/index.ts",
   "type": "module",
   "private": true,
   "scripts": {
     "dev": "bun --watch ./src/index.ts",
     "build": "tsc --noEmit",
-    "start": "bun ./src/index.ts"
+    "check-types": "tsc --noEmit",
+    "start": "bun ./src/index.ts",
+    "test": "bun test"
   },
   "devDependencies": {
     "@types/bun": "latest"
@@ -15,7 +17,11 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@repo/types": "workspace:*",
+    "@repo/config": "workspace:*",
+    "@repo/domain": "workspace:*",
+    "@repo/events": "workspace:*",
+    "@repo/logger": "workspace:*",
+    "@repo/redis-streams": "workspace:*",
     "redis": "^6.0.1"
   }
 }

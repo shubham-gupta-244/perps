@@ -54,7 +54,11 @@
     "apps/engine": {
       "name": "engine",
       "dependencies": {
-        "@repo/types": "workspace:*",
+        "@repo/config": "workspace:*",
+        "@repo/domain": "workspace:*",
+        "@repo/events": "workspace:*",
+        "@repo/logger": "workspace:*",
+        "@repo/redis-streams": "workspace:*",
         "redis": "^6.0.1",
       },
       "devDependencies": {
@@ -85,6 +89,10 @@
     },
     "apps/snapshot": {
       "name": "snapshot",
+      "dependencies": {
+        "@repo/config": "workspace:*",
+        "@repo/domain": "workspace:*",
+      },
       "devDependencies": {
         "@types/bun": "latest",
       },
