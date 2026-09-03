@@ -3,6 +3,7 @@ import {
   StreamConsumer,
   StreamProducer,
   readRange,
+  compareStreamIds,
   type Redis,
 } from "@repo/redis-streams";
 import {
@@ -40,6 +41,8 @@ export class EngineRuntime {
   private snapshotTimer?: ReturnType<typeof setInterval>;
   private queryRunning = false;
   private dirtySinceSnapshot = 0;
+  /** Stream id the engine state already reflects after recover(). */
+  private replayedThrough = "0";
 
   constructor(deps: RuntimeDeps) {
     this.deps = deps;
@@ -78,6 +81,7 @@ export class EngineRuntime {
       durationMs: Math.round(performance.now() - startedAt),
     });
     metrics.gauge("engine_replayed_events", replayed);
+    this.replayedThrough = this.engine.state.lastInputId;
   }
 
   /** Begin consuming live input, publishing output, and snapshotting. */
@@ -93,6 +97,11 @@ export class EngineRuntime {
     });
 
     await this.consumer.start(async (msg) => {
+      // Events at or before replayedThrough were already folded into state by
+      // recover(); ack them without reprocessing (the group cursor starts at 0
+      // after group creation, so it redelivers the whole history once).
+      if (compareStreamIds(msg.id, this.replayedThrough) <= 0) return;
+
       const event = decodeInputEvent(msg.fields); // throw => stays pending => DLQ after retries
       const outputs = this.engine.process(event, { streamId: msg.id });
       await this.publish(outputs);

@@ -57,7 +57,7 @@ async function applyEvent(tx: Tx, evt: EngineOutputEvent): Promise<void> {
         data: {
           status: statusMap[p.status],
           filledQuantity: r(p.filledQuantity),
-          avgFillPrice: r(p.avgFillPrice),
+          ...(p.avgFillPrice > 0 ? { avgFillPrice: r(p.avgFillPrice) } : {}),
         },
       }).catch(() => {});
       return;

@@ -30,7 +30,7 @@ model Position {
   unrealizedPnl    Int       @default(0)
   markPrice        Int       @default(0)
   updatedAt        DateTime  @default(now()) @updatedAt
-  wallet           Wallet    @relation(fields: [userId], references: [id])
+  wallet           Wallet    @relation(fields: [userId], references: [userId])
 
   @@map("positions")
 }

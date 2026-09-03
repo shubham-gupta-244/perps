@@ -170,6 +170,7 @@ export class Engine {
 
     let remaining = o.quantity;
     let filledNotional = 0;
+    const makerTouched = new Map<string, { restingQty: number; filled: number; userId: string }>();
 
     const takerSide: Side = o.side;
     const makerLevels = o.side === "Bid" ? this.state.asks : this.state.bids;
@@ -195,6 +196,14 @@ export class Engine {
 
         applyFill(this.state, maker.userId, maker.side, fillPrice, fillQty, makerFillMargin, maker.leverage);
         applyFill(this.state, o.userId, takerSide, fillPrice, fillQty, takerFillMargin, o.leverage);
+
+        const mt = makerTouched.get(maker.orderId) ?? {
+          restingQty: maker.quantity,
+          filled: 0,
+          userId: maker.userId,
+        };
+        mt.filled = q(mt.filled + fillQty);
+        makerTouched.set(maker.orderId, mt);
 
         this.state.lastTradePrice = fillPrice;
         remaining = q(remaining - fillQty);
@@ -249,6 +258,21 @@ export class Engine {
       status = filled > 0 ? "PARTIAL" : "CANCELLED";
     } else {
       status = "FILLED";
+    }
+
+    for (const [makerOrderId, mt] of makerTouched) {
+      const remainingMaker = q(mt.restingQty - mt.filled);
+      outs.push({
+        eventType: "order.accepted",
+        payload: {
+          orderId: makerOrderId,
+          userId: mt.userId,
+          status: remainingMaker > 1e-9 ? "PARTIAL" : "FILLED",
+          filledQuantity: mt.filled,
+          remainingQuantity: Math.max(0, remainingMaker),
+          avgFillPrice: 0,
+        },
+      });
     }
 
     for (const userId of affected) {

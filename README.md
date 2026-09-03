@@ -1,159 +1,81 @@
-# Turborepo starter
+# futures — exchange / trading-engine backend
 
-This Turborepo starter is maintained by the Turborepo core team.
+A perpetual-futures matching engine built around a strict split between
+**deterministic domain logic** and **infrastructure adapters**. The engine keeps
+all hot state in memory, is driven exclusively by a durable Redis Stream, and is
+recoverable from `snapshot + input-stream replay`.
 
-## Using this example
+## Architecture
 
-Run the following command:
-
-```sh
-npx create-turbo@latest
+```
+client ─HTTP─▶ apps/backend ─▶ Postgres (users, durable orders, projections)
+client ─HTTP─▶ apps/backend ─┐
+apps/index-price-observer ───┤─▶ stream:engine:input ─▶ apps/engine (single-threaded, in-memory)
+                             │                              │
+                             │                              ├─▶ snapshot to disk (records stream id)
+                             │                              ▼
+client ◀─WS─ apps/ws ◀───────┴──────────────────  stream:engine:output ──▶ apps/db-Writer ─▶ Postgres
 ```
 
-## What's inside?
+- **stream:engine:input** — the source of truth for engine state. Every command
+  (`order.place`, `order.cancel`, `user.created`, `balance.deposited`) and every
+  `index_price.updated` event goes through it.
+- **stream:engine:output** — engine-produced domain events, consumed independently
+  by the WS servers (fan-out) and the db-poller (projection).
+- **stream:engine:query** — non-durable request/reply for live reads; never
+  touches the input log.
+- Delivery is **at-least-once**; every consumer is **idempotent**
+  (`commandId` in the engine, `ProcessedEvent` rows in the db-poller). No
+  exactly-once claims.
 
-This Turborepo includes the following packages/apps:
+### State ownership
 
-### Apps and Packages
+| State | Owner |
+|---|---|
+| order book, balances, positions, sequence metadata | engine memory + snapshot |
+| mark price | engine memory; source of truth = input stream events |
+| users / auth, durable order records, trade ledger | Postgres (authoritative) |
+| order status / position / balance for HTTP reads | Postgres projection via db-poller |
+| command/event log | `stream:engine:input` |
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+## Packages
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+- `@repo/events` — typed input/output events, zod codecs, versioned envelope
+- `@repo/domain` — the pure, infra-free engine (`engine.process(event)`)
+- `@repo/redis-streams` — consumer-group adapter (ack, XAUTOCLAIM, DLQ, replay)
+- `@repo/config` — stream/group names and tuning knobs
+- `@repo/logger` — structured logging + metric registry
 
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo build
-```
-
-Without global `turbo`, use your package manager:
+## Running locally
 
 ```sh
-cd my-turborepo
-npx turbo build
-bun dlx turbo build
-bun exec turbo build
+docker compose up -d                      # redis + postgres
+bun install
+cd packages/db && bunx prisma migrate deploy && bunx prisma generate && cd -
+
+# each in its own terminal (bun run start, or bun run dev for watch mode)
+bun run --filter engine start
+bun run --filter backend start
+bun run --filter ws start
+bun run --filter db-writer start
+bun run --filter index-price-observer start
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+Health/metrics: `:3100/metrics` (engine), `:3000/metrics` (api),
+`:4000` (ws), `:4001` (observer), `:4002` (db-poller).
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+Inspect the newest snapshot: `bun run --filter snapshot start`.
+
+## Testing
 
 ```sh
-turbo build --filter=docs
+docker compose up -d
+bunx turbo run check-types
+bunx turbo run test        # unit + redis/postgres integration
 ```
 
-Without global `turbo`:
-
-```sh
-npx turbo build --filter=docs
-bun exec turbo build --filter=docs
-bun exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-bun exec turbo dev
-bun exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-bun exec turbo dev --filter=web
-bun exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-bun exec turbo login
-bun exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-bun exec turbo link
-bun exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+Key tests: `packages/domain/engine.test.ts` (matching, margin, liquidation,
+duplicate-command no-op, and the mandated *snapshot-after-C + replay-D-E ==
+direct-A-E* equivalence); `apps/engine/src/runtime.test.ts` (replay, snapshot
+corruption fallback); `apps/integration/e2e.test.ts` (full
+client→engine→output→projection loop and crash recovery).

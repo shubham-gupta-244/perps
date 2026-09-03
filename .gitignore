@@ -36,3 +36,8 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# engine snapshots / local data
+.data/
+.claude
+claude-instruction
