@@ -131,6 +131,18 @@
         "typescript": "^5",
       },
     },
+    "packages/domain": {
+      "name": "@repo/domain",
+      "dependencies": {
+        "@repo/events": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
     "packages/eslint-config": {
       "name": "@repo/eslint-config",
       "version": "0.0.0",
@@ -656,6 +668,8 @@
     "@repo/config": ["@repo/config@workspace:packages/config"],
 
     "@repo/db": ["@repo/db@workspace:packages/db"],
+
+    "@repo/domain": ["@repo/domain@workspace:packages/domain"],
 
     "@repo/eslint-config": ["@repo/eslint-config@workspace:packages/eslint-config"],
 
